@@ -1,23 +1,27 @@
 
 // Lock screen
-document.addEventListener('touchmove', function (e) { e.preventDefault(); }, false);
+document.addEventListener('touchmove', function (e) { 
+//console.log('touchmove');
+		e.preventDefault(); 
+        }, false);
 
 var stage, stageW, stageH,
 	friction = 0.98,
 	bounce = -0.75,
 	sensitivity = 0.2,
 	diameter = 40,
+        update_rate = 50,
 	ax = ay = 0,
 	mainLoop,
-	players = [], me,
+	players = [], me, 
 	count = 0,
 	floodControl, ready,
 	buffer = [];
 
 
 function Player (id, className, x, y) {
-	var that = this,
-		div = document.createElement('div');
+console.log('player',id);
+	var that = this, div = document.createElement('div');
 	
 	div.id = 'b' + id;
 	div.className = 'ball ' + className;
@@ -32,8 +36,8 @@ function Player (id, className, x, y) {
 }
 
 Player.prototype = {
-	vx: 0,
-	vy: 0,
+	vx: 1.0,
+	vy: 1.0,
 	
 	move: function () {
 		var that = this, x, y;
@@ -60,7 +64,7 @@ Player.prototype = {
 		}
 
 		that.vx += ax;
-	    that.vy += ay;
+		that.vy += ay;
 
 		that.update(x, y);
 	},
@@ -73,6 +77,7 @@ Player.prototype = {
 	},
 	
 	remove: function () {
+//console.log('remove');
 		stage.removeChild(this.ball);
 	}
 }
@@ -85,32 +90,25 @@ function moveMe () {
 
 	if (buffer.length > 10) buffer.shift();
 
+//console.log('moving to',me.x, me.y);
 	sendPosition();
 }
 
 window.addEventListener('devicemotion', function (e) {
+//console.log('motion');
 	ax = e.accelerationIncludingGravity.x * sensitivity;
 	ay = -e.accelerationIncludingGravity.y * sensitivity;
+socket.emit('devicemotion',me.id,e);
 }, false);
 
 window.addEventListener('load', function () {
 	stage = document.getElementById('stage');
 	stageW = stage.clientWidth;
 	stageH = stage.clientHeight;
+//console.log('load',stageW,stageH);
 
 	var popup = document.getElementById('popup');
+	view_only = !('ondevicemotion' in window);
 	
-	if (!navigator.appVersion.match(/ipad/gi)) {
-		popup.innerHTML = 'Sorry, this app is for iPad only';
-		popup.style.display = 'block';
-		return;
-	}
-
-	if (!('ondevicemotion' in window)) {
-		popup.innerHTML = 'Sorry, you need iPad ≥ 4.2 to run this app';
-		document.getElementById('popup').style.display = 'block';
-		return;
-	}
-	
-	socketInit();
+	socketInit(view_only);
 }, false);

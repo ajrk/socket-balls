@@ -1,13 +1,10 @@
+var socket;
 
-var socket = new io.Socket(null, { port: 8008, transports: ['websocket'] }),
-	sessionid = 0,
-	connectTimeout;
-
-function socketInit() {
-	var connection = socket.connect();
+function socketInit(view_only) {
+	socket = io.connect(':8081/room');
 
 	connectTimeout = setTimeout(function () {
-		if (connection.connected === true) {
+		if (socket.connected === true) {
 			return;
 		}
 
@@ -17,51 +14,51 @@ function socketInit() {
 	}, 3000);
 	
 	socket.on('connect', function () {
+//console.log("connect",this);
 		clearTimeout(connectTimeout);
 
-		sessionid = this.transport.sessionid;
-
-		me = new Player(sessionid, 'player');
-
-		mainLoop = setInterval(moveMe);
+                if (!view_only) {
+		    me = new Player(this.id, 'player');
+//console.log('id',me.id);
+		    mainLoop = setInterval(moveMe,update_rate);
+                }
 	});
 
-	socket.on('message', function (message) {
-		switch (message.type) {
-			case 'position':
-				// Update players position
-				updatePosition(message.list);
-				ready = true;
-				break;
-			case 'playerslist':
-				// Create all opponents
-				createOpponents(message.list);
-				ready = true;	// ready to communicate with socket server
-				break;
-			case 'new':
-				// New player joined
-				players.push(new Player(message.id, 'opponent'));
-				break;
-			case 'leave':
-				// Player disconnected
-				leave(message.id);
-				break;
-		}
-	});
+	socket.on('position', function (messages) {
+//console.log("position",messages);
+                updatePosition(messages);
+                ready = true;
+        });
+        socket.on('playerslist', function (p) {
+//console.log("playerslist",p);
+                createOpponents(p);
+                ready = true;
+        });
+        socket.on('new', function (playerid) {
+//console.log("new player",playerid);
+                players.push(new Player(playerid, 'opponent'));
+        });
+        socket.on('leave', function (playerid) {
+//console.log("end player",playerid);
+                leave(playerid);
+        });
 
 	socket.on('disconnect', function () {
+//console.log("disconnect");
 		document.getElementById('popup').style.display = 'block';
 	});
 }
 
 function sendPosition () {
+//console.log('me',me);
 	if (ready) {
 		ready = false;
 
 		var pos = buffer.length ? buffer[0] : { x:me.x, y:me.y };
 		buffer.shift();
 
-		socket.send({ type:'position', id:me.id, x:pos.x, y:pos.y });
+//console.log("sending position from",me.id);
+		socket.emit('position', {id:me.id, x:pos.x, y:pos.y});
 	}
 }
 
